@@ -68,3 +68,7 @@ export const loginUser = async (req: FastifyRequest, res: FastifyReply) => {
     return res.status(500).send({ error: "Server error during login" });
   }
 }
+
+export const mfaVerify = async (req: FastifyRequest, res: FastifyReply) => {
+
+}
