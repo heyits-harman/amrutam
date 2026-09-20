@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import { getMeHandler, updateProfileHandler, setupMfaHandler, enableMfaHandler } from '../controllers/user';
-import { enableMfaSchema } from '../validations/userSchema';
+import { enableMfaSchema, updateProfileSchema } from '../validations/userSchema';
 
 async function userRoutes(app: FastifyInstance){
   app.get('/me', getMeHandler);
-  app.put('/me/profile', updateProfileHandler);
+  app.put('/me/profile', { schema: updateProfileSchema }, updateProfileHandler);
 
   // MFA Setup Endpoints
   app.post('/mfa/setup', setupMfaHandler);

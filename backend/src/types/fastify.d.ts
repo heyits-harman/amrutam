@@ -1,17 +1,10 @@
-import { Role } from "@prisma/client";
-import "@fastify/jwt";
+import { Role } from "../../generated/prisma/enums";
 
 declare module "fastify" {
   interface FastifyRequest {
     user: {
       id: string;
       role: Role;
-    };
-  }
-  interface FastifyInstance {
-    jwt: {
-      sign(payload: object, options?: object): string;
-      verify<T = object>(token: string, options?: object): T;
     };
   }
 }

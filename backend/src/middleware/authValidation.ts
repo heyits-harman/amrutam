@@ -8,11 +8,11 @@ export const authValidation = async (request: FastifyRequest, reply: FastifyRepl
     const token = authHeader.split(' ')[1];
     const secret = process.env.ACCESS_TOKEN || '';
 
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       jwt.verify(token!, secret, (err, decoded: any) => {
         if (err || !decoded) {
           reply.status(401).send({ error: 'User not Authorized!' });
-          return;
+          return reject(new Error('Unauthorized'));
         }
 
         request.user = {
@@ -24,5 +24,6 @@ export const authValidation = async (request: FastifyRequest, reply: FastifyRepl
     });
   } else {
     reply.status(401).send({ error: 'Token not provided or token format invalid!' });
+    throw new Error('Token not provided');
   }
 };

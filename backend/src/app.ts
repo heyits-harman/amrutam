@@ -5,6 +5,7 @@ import authRoutes from './route/authRoutes';
 import userRoutes from './route/userRoutes';
 import doctorRoutes from './route/doctorRoutes'
 import consultationRoutes from './route/consultationRoutes'
+import adminRoutes from './route/adminRoutes'
 
 const app = Fastify({
   logger: true,
@@ -18,7 +19,7 @@ app.register(authRoutes, { prefix: '/auth' });
 //admin
 app.register(async (adminScope) => {
   app.addHook("preHandler", authValidation);
-  adminScope.register(userRoutes);
+  adminScope.register(adminRoutes);
 }, { prefix: '/admin' })
 
 //users

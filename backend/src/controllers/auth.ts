@@ -33,6 +33,7 @@ export const createUserHandler = async (request: FastifyRequest, reply: FastifyR
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
       data: { name, email, passwordHash: hashedPassword, role },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
     });
 
     return reply.status(201).send({ message: "User Created", user: newUser });
@@ -64,21 +65,22 @@ export const loginUserHandler = async (request: FastifyRequest, reply: FastifyRe
     // CHECK IF MFA IS ENABLED
     if (user.isMfaEnabled) {
       // Generate a temporary 5-minute token for the second factor step
-      const mfaToken = request.server.jwt.sign(
+      const mfaToken = jwt.sign(
         { userId: user.id, type: 'MFA_AUTH_PENDING' },
+        process.env.ACCESS_TOKEN!,
         { expiresIn: '5m' }
       );
 
       return reply.status(200).send({
         mfaRequired: true,
         mfaToken,
-        message: 'MFA code required. Post token and 6-digit code to /api/v1/auth/mfa/verify',
+        message: 'MFA code required. Post token and 6-digit code to /auth/mfa/verify',
       });
     }
 
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.ACCESS_TOKEN!, { expiresIn: "1d" });
     
-    return reply.send({ message: 'Login Succesfully', token });
+    return reply.send({ message: 'Login successfully', token });
 
   } catch (err: any) {
     console.error("Login Error: ", err.message);
@@ -95,7 +97,7 @@ export const verifyMfaHandler = async (
 
     let payload: any;
     try {
-      payload = request.server.jwt.verify(mfaToken);
+      payload = jwt.verify(mfaToken, process.env.ACCESS_TOKEN!);
     } catch (err) {
       return reply.status(401).send({ error: 'Invalid or expired MFA token session.' });
     }
@@ -122,8 +124,9 @@ export const verifyMfaHandler = async (
     }
 
     // Issue full session access token upon success
-    const accessToken = request.server.jwt.sign(
-      { id: user.id, role: user.role, email: user.email },
+    const accessToken = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.ACCESS_TOKEN!,
       { expiresIn: '1d' }
     );
 
