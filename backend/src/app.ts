@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import authValidation from './middleware/authValidation'
+import { authValidation } from './middleware/authValidation'
 import authRoutes from './route/authRoutes';
 import userRoutes from './route/userRoutes';
 import doctorRoutes from './route/doctorRoutes'

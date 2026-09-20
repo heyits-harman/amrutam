@@ -1,8 +1,8 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import jwt from 'jsonwebtoken';
 
-const authValidation = async (req: FastifyRequest, res: FastifyReply) => {
-  const authHeader = req.headers.authorization || req.headers.Authorization;
+export const authValidation = async (request: FastifyRequest, reply: FastifyReply) => {
+  const authHeader = request.headers.authorization || request.headers.Authorization;
 
   if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
@@ -11,11 +11,11 @@ const authValidation = async (req: FastifyRequest, res: FastifyReply) => {
     return new Promise<void>((resolve) => {
       jwt.verify(token!, secret, (err, decoded: any) => {
         if (err || !decoded) {
-          res.status(401).send({ error: 'User not Authorized!' });
+          reply.status(401).send({ error: 'User not Authorized!' });
           return;
         }
 
-        req.user = {
+        request.user = {
           id: decoded.id,
           role: decoded.role
         };
@@ -23,8 +23,6 @@ const authValidation = async (req: FastifyRequest, res: FastifyReply) => {
       });
     });
   } else {
-    res.status(401).send({ error: 'Token not provided or token format invalid!' });
+    reply.status(401).send({ error: 'Token not provided or token format invalid!' });
   }
 };
-
-export default authValidation;

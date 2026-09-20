@@ -1,12 +1,13 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import speakeasy from 'speakeasy';
 import { prisma } from '../../lib/prisma'
 import { UserRole } from "../../generated/prisma/enums";
 
-export const createUser = async (req: FastifyRequest, res: FastifyReply) => {
+export const createUserHandler = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const body = (req.body ?? {}) as {
+    const body = (request.body ?? {}) as {
       name: string;
       email: string;
       password: string;
@@ -17,7 +18,7 @@ export const createUser = async (req: FastifyRequest, res: FastifyReply) => {
     let role = body.role ?? UserRole.PATIENT;
 
     if (!name || !email || !password) {
-      return res.status(400).send({ error: "INVALID_REQUEST" });
+      return reply.status(400).send({ error: "INVALID_REQUEST" });
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -26,7 +27,7 @@ export const createUser = async (req: FastifyRequest, res: FastifyReply) => {
     });
 
     if (existingUser !== null) {
-      return res.status(400).send({ error: "Email already exists!" });
+      return reply.status(400).send({ error: "Email already exists!" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -34,41 +35,104 @@ export const createUser = async (req: FastifyRequest, res: FastifyReply) => {
       data: { name, email, passwordHash: hashedPassword, role },
     });
 
-    return res.status(201).send({ message: "User Created", user: newUser });
+    return reply.status(201).send({ message: "User Created", user: newUser });
   } catch (err: any) {
     console.error("Registration Error: ", err.message);
-    return res.status(500).send({ error: "Server error during registration" });
+    return reply.status(500).send({ error: "Server error during registration" });
   }
 }
 
-export const loginUser = async (req: FastifyRequest, res: FastifyReply) => {
+export const loginUserHandler = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const body = (req.body ?? {}) as { email: string; password: string; }
+    const body = (request.body ?? {}) as { email: string; password: string; }
 
     const { email, password } = body;
 
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, role: true, password: true },
     });
 
     if (!user) {
-      return res.status(400).send({ error: "User is not registered!" });
+      return reply.status(400).send({ error: "User is not registered!" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      return res.status(400).send({ error: "Invalid password!" });
+      return reply.status(400).send({ error: "Invalid password!" });
+    }
+
+    // CHECK IF MFA IS ENABLED
+    if (user.isMfaEnabled) {
+      // Generate a temporary 5-minute token for the second factor step
+      const mfaToken = request.server.jwt.sign(
+        { userId: user.id, type: 'MFA_AUTH_PENDING' },
+        { expiresIn: '5m' }
+      );
+
+      return reply.status(200).send({
+        mfaRequired: true,
+        mfaToken,
+        message: 'MFA code required. Post token and 6-digit code to /api/v1/auth/mfa/verify',
+      });
     }
 
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.ACCESS_TOKEN!, { expiresIn: "1d" });
-    return res.send({ message: 'Login Succesfully', token });
+    
+    return reply.send({ message: 'Login Succesfully', token });
+
   } catch (err: any) {
     console.error("Login Error: ", err.message);
-    return res.status(500).send({ error: "Server error during login" });
+    return reply.status(500).send({ error: "Server error during login" });
   }
 }
 
-export const mfaVerify = async (req: FastifyRequest, res: FastifyReply) => {
+export const verifyMfaHandler = async (
+  request: FastifyRequest<{ Body: { mfaToken: string; code: string } }>,
+  reply: FastifyReply
+) => {
+  try {
+    const { mfaToken, code } = request.body;
 
-}
+    let payload: any;
+    try {
+      payload = request.server.jwt.verify(mfaToken);
+    } catch (err) {
+      return reply.status(401).send({ error: 'Invalid or expired MFA token session.' });
+    }
+
+    if (payload.type !== 'MFA_AUTH_PENDING') {
+      return reply.status(401).send({ error: 'Invalid token type.' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+
+    if (!user || !user.mfaSecret) {
+      return reply.status(400).send({ error: 'MFA details not found for user.' });
+    }
+
+    const isValid = speakeasy.totp.verify({
+      secret: user.mfaSecret,
+      encoding: 'base32',
+      token: code,
+      window: 1,
+    });
+
+    if (!isValid) {
+      return reply.status(400).send({ error: 'Invalid MFA verification code.' });
+    }
+
+    // Issue full session access token upon success
+    const accessToken = request.server.jwt.sign(
+      { id: user.id, role: user.role, email: user.email },
+      { expiresIn: '1d' }
+    );
+
+    return reply.status(200).send({
+      message: 'MFA login successful.',
+      accessToken,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (error) {
+    return reply.status(500).send({ error: 'Failed to complete MFA login.' });
+  }
+};
