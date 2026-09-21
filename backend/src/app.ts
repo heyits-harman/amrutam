@@ -18,26 +18,29 @@ app.register(authRoutes, { prefix: '/auth' });
 
 //admin
 app.register(async (adminScope) => {
-  app.addHook("preHandler", authValidation);
+  await adminScope.addHook("preHandler", authValidation);
   adminScope.register(adminRoutes);
 }, { prefix: '/admin' })
 
 //users
 app.register(async (userScope) => {
-  app.addHook("preHandler", authValidation);
+  await userScope.addHook("preHandler", authValidation);
   userScope.register(userRoutes);
 }, { prefix: '/users' })
 
 //doctors
 app.register(async (doctorScope) => {
-  app.addHook("preHandler", authValidation);
+  await doctorScope.addHook("preHandler", authValidation);
   doctorScope.register(doctorRoutes);
 }, { prefix: '/doctors' })
 
 //consultations
 app.register(async (consultationScope) => {
-  app.addHook("preHandler", authValidation);
+  await consultationScope.addHook("preHandler", authValidation);
   consultationScope.register(consultationRoutes);
 }, { prefix: '/consultations' })
+
+//Health CHeck
+app.get('/health', async () => ({ status: 'ok', timestamp: new Date() }));
 
 export default app;

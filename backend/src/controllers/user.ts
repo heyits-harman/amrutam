@@ -6,7 +6,7 @@ import { prisma } from '../../lib/prisma'
 // 1. Get Current User Profile
 export const getMeHandler = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const userId = (request.user as any).id;
+    const { id: userId } = request.user;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -46,7 +46,7 @@ export const updateProfileHandler = async (request:FastifyRequest, reply: Fastif
       address?: string;
     }
 
-    const userId = (request.user as any).id;
+    const { id: userId } = request.user;
     const { firstName, lastName, dateOfBirth, gender, address } = body;
 
     // Upsert user profile (create if missing, update if existing)
@@ -81,11 +81,19 @@ export const updateProfileHandler = async (request:FastifyRequest, reply: Fastif
 // 3. Setup MFA
 export const setupMfaHandler = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const userId = (request.user as any).id;
-    const email = (request.user as any).email;
+    const { id: userId } = request.user;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found.' });
+    }
 
     const secret = speakeasy.generateSecret({
-      name: `Amrutam Telemedicine (${email})`,
+      name: `Amrutam Telemedicine (${user.email})`,
       issuer: 'Amrutam',
     });
 
@@ -112,7 +120,7 @@ export const enableMfaHandler = async (
   reply: FastifyReply
 ) => {
   try {
-    const userId = (request.user as any).id;
+    const { id: userId } = request.user;
     const { code } = request.body;
 
     const user = await prisma.user.findUnique({ where: { id: userId } });

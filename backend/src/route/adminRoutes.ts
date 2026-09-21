@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
-import { requireRole } from '../middleware/role'
+import { requireRole } from '../middleware/role';
+import {
+  getAnalyticsHandler,
+  getAuditLogsHandler,
+} from '../controllers/admin';
 
 async function adminRoutes(app: FastifyInstance){
-  app.get('/analytics', { preHandler: requireRole('ADMIN') }, async (_request, reply) => {
-    return reply.status(200).send({ message: 'Aggregate metrics (daily consultation volume, total revenue, doctor load)' });
-  });
-  app.get('/audit-logs', { preHandler: requireRole('ADMIN') }, async (_request, reply) => {
-    return reply.status(200).send({ message: 'Query system security and compliance audit trails' });
-  });
+  app.get('/analytics', { preHandler: requireRole('ADMIN') }, getAnalyticsHandler);
+  app.get('/audit-logs', { preHandler: requireRole('ADMIN') }, getAuditLogsHandler);
 }
 
 export default adminRoutes;
