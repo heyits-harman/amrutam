@@ -59,7 +59,7 @@ export const loginUserHandler = async (request: FastifyRequest, reply: FastifyRe
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      return reply.status(400).send({ error: "Invalid password!" });
+      return reply.status(400).send({ success: false, error: "Invalid password!" });
     }
 
     // CHECK IF MFA IS ENABLED
@@ -80,11 +80,11 @@ export const loginUserHandler = async (request: FastifyRequest, reply: FastifyRe
 
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.ACCESS_TOKEN!, { expiresIn: "1d" });
     
-    return reply.send({ message: 'Login successfully', token });
+    return reply.send({ success: true, message: 'Login successfully', token });
 
   } catch (err: any) {
     console.error("Login Error: ", err.message);
-    return reply.status(500).send({ error: "Server error during login" });
+    return reply.status(500).send({ success: false, error: "Server error during login" });
   }
 }
 

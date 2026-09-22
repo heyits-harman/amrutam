@@ -1,0 +1,58 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: amrutam_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Push Database Schema & Seed Data
+        env:
+          DATABASE_URL: "postgresql://postgres:postgrespassword@localhost:5432/amrutam_test_db?schema=public"
+        run: |
+          npx prisma db push
+          npx prisma db seed
+
+      - name: Run Tests
+        env:
+          DATABASE_URL: "postgresql://postgres:postgrespassword@localhost:5432/amrutam_test_db?schema=public"
+          JWT_SECRET: "ci_test_secret_key_123"
+        run: npm test
+
+      - name: Build Application
+        run: npm run build
