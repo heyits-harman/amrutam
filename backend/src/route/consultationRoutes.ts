@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { requireRole } from '../middleware/role';
+import { authValidation } from '../middleware/authValidation'
 import { checkIdempotency } from '../middleware/idempotency'
 import { 
   bookConsultationHandler,
@@ -14,6 +15,9 @@ import {
 } from '../controllers/prescription'
 
 async function consultationRoutes(app: FastifyInstance){
+
+  // Auth Middelware
+  app.addHook('preHandler', authValidation);
 
   app.post('/book', { preHandler: [requireRole('PATIENT'), checkIdempotency] }, bookConsultationHandler);     //Atomic reservation of a time slot (Requires Idempotency-Key header)
 
