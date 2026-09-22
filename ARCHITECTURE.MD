@@ -1,5 +1,3 @@
----
-
 # Amrutam Telemedicine Backend – Architecture & Design Document
 
 ## 1. System Overview & Core Requirements
@@ -17,9 +15,6 @@ Amrutam’s telemedicine backend is designed to serve as a high-throughput, faul
 
 * **Security & Compliance:** End-to-end multi-tenant isolation, Role-Based Access Control (RBAC), TOTP MFA, and immutable audit trailing.
 
-
-
----
 
 ## 2. High-Level Architecture (HLD) & System Data Flow
 
