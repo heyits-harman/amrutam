@@ -10,7 +10,6 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
 
-    # Directs all step commands to execute inside the backend folder
     defaults:
       run:
         working-directory: ./backend
@@ -50,6 +49,8 @@ jobs:
       - name: Push Database Schema & Seed Data
         env:
           DATABASE_URL: "postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/amrutam?schema=public"
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NODE_ENV: test
         run: |
           npx prisma db push
           npx prisma db seed
